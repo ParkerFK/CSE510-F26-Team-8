@@ -1,0 +1,6 @@
+# Lichess puzzle database downloaded by prepare_puzzles.py.
+# Do not publish this file. The script fetches it locally.
+sources/
+
+# Subset and vectors built from that download.
+data/
