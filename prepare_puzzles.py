@@ -68,19 +68,53 @@ def run_encoder_checks() -> None:
     print("encoder checks passed")
     print("  starting position: 32 ones, white pawns at indexes 8-15, white rook on a1")
 
+#function to decompress the .zst file for python 3.14+
+def _zst_stream_reader(raw):
+    try:
+        from compression import zstd as std_zstd
+
+        return std_zstd.ZstdDecompressor().stream_reader(raw)
+    except ImportError:
+        pass
+
+    import shutil
+    import subprocess
+
+    zstd_bin = shutil.which("zstd")
+    if zstd_bin is not None:
+        #keep the handle open for the life of the pipe; caller closes `raw`
+        proc = subprocess.Popen(
+            [zstd_bin, "-d", "-c"],
+            stdin=raw,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        if proc.stdout is None:
+            raise RuntimeError("zstd produced no stdout")
+        return proc.stdout
+
+    try:
+        import zstandard as zstd
+    except ImportError as exc:
+        raise ImportError(
+            "Need a .zst decompressor. Use Python 3.14+, install the "
+            "`zstd` CLI, or `pip install zstandard` (may need Microsoft "
+            "C++ Build Tools on Windows if no wheel is available)."
+        ) from exc
+
+    return zstd.ZstdDecompressor().stream_reader(raw)
+
+
 #function to open a .csv or .csv.zst file as a text stream
 def _open_text(src: Path):
     #check if the file is a .zst file
     if src.suffix == ".zst":
-        #if it is, import the zstandard library for this function only
-        import zstandard as zstd
-        
         #open the file as a binary stream
         raw = open(src, "rb")
-        
-        #create a zstandard reader
-        reader = zstd.ZstdDecompressor().stream_reader(raw)
-        
+
+        #create a zstandard reader (stdlib, CLI, or pip package)
+        reader = _zst_stream_reader(raw)
+
         #create a text stream
         text = io.TextIOWrapper(reader, encoding="utf-8", newline="")
         return text, raw
