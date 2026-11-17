@@ -71,7 +71,7 @@ def run_encoder_checks() -> None:
 #function to decompress the .zst file for python 3.14+
 def _zst_stream_reader(raw):
     try:
-        from compression import zstd as std_zstd
+        from _compression import zstd as std_zstd
 
         return std_zstd.ZstdDecompressor().stream_reader(raw)
     except ImportError:
