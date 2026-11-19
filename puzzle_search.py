@@ -1,10 +1,10 @@
 """
-Binary FAISS Search Workflow Script for Chess Puzzles (Version 2).
+Binary FAISS Search Workflow Script for Chess Puzzles (Version 3).
 
 Combines Plain Search, Search-First (Post-Filtering with Overfetching),
 and Filter-First (Pre-Filtering with FAISS IDSelectorBatch) into a single
 unified Python script with CLI argument parsing, automatic index detection
-and building, and error handling.
+and building, and robust error handling.
 """
 
 from __future__ import annotations
@@ -228,7 +228,19 @@ def filter_first_then_search(
         match=match,
     )
 
-    if allowed_rows is not None and len(allowed_rows) == 0:
+    # If no filter is specified, store.rows_for_filter returns None (unconstrained).
+    # Perform standard plain search to avoid passing None to np.ascontiguousarray in FAISS.
+    if allowed_rows is None:
+        results = plain_search(
+            indexes=indexes,
+            store=store,
+            fen_string=fen_string,
+            k=k,
+            index_name=index_name,
+        )
+        return results, f"{index_name}(unconstrained)"
+
+    if len(allowed_rows) == 0:
         return [], "empty_filter_match"
 
     query_vec = encode_position(fen_string)
